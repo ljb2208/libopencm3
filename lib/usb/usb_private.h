@@ -76,7 +76,8 @@ void _usbd_reset(void);
 struct _usbd_driver {
 	void (*init)(void);
 	void (*set_address)(u8 addr);
-	void (*ep_setup)(u8 addr, u8 type, u16 max_size, void (*cb)(u8 ep));
+	void (*ep_setup)(u8 addr, u8 type, u16 max_size, void (*cb)(u8 ep),
+			u32 flags);
 	void (*ep_reset)(void);
 	void (*ep_stall_set)(u8 addr, u8 stall);
 	void (*ep_nak_set)(u8 addr, u8 nak);

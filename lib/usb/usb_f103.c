@@ -27,7 +27,7 @@
 static void stm32f103_usbd_init(void);
 static void stm32f103_set_address(u8 addr);
 static void stm32f103_ep_setup(u8 addr, u8 type, u16 max_size,
-			       void (*callback) (u8 ep));
+			       void (*callback) (u8 ep), u32 flags);
 static void stm32f103_endpoints_reset(void);
 static void stm32f103_ep_stall_set(u8 addr, u8 stall);
 static u8 stm32f103_ep_stall_get(u8 addr);
@@ -79,8 +79,9 @@ static void stm32f103_set_address(u8 addr)
 static void usb_set_ep_rx_bufsize(u8 ep, u32 size)
 {
 	if (size > 62) {
-		if (size & 0x1f)
+		if (!(size & 0x1f))
 			size -= 32;
+		size &= ~0x1f;
 		USB_SET_EP_RX_COUNT(ep, (size << 5) | 0x8000);
 	} else {
 		if (size & 1)
@@ -90,8 +91,10 @@ static void usb_set_ep_rx_bufsize(u8 ep, u32 size)
 }
 
 static void stm32f103_ep_setup(u8 addr, u8 type, u16 max_size,
-			       void (*callback) (u8 ep))
+			       void (*callback) (u8 ep), u32 flags)
 {
+	(void)flags;
+
 	/* Translate USB standard type codes to STM32. */
 	const u16 typelookup[] = {
 		[USB_ENDPOINT_ATTR_CONTROL] = USB_EP_TYPE_CONTROL,

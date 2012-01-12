@@ -217,7 +217,7 @@ static void hid_set_config(u16 wValue)
 {
 	(void)wValue;
 
-	usbd_ep_setup(0x81, USB_ENDPOINT_ATTR_INTERRUPT, 4, NULL);
+	usbd_ep_setup(0x81, USB_ENDPOINT_ATTR_INTERRUPT, 4, NULL, 0);
 
 	usbd_register_control_callback(
 				USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,

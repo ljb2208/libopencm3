@@ -58,8 +58,9 @@ extern void usbd_register_set_config_callback(void (*callback)(u16 wValue));
 extern void usbd_poll(void);
 extern void usbd_disconnect(bool disconnected);
 
+#define EP_FLAG_DOUBLE_BUFFERED		(1 << 0)
 extern void usbd_ep_setup(u8 addr, u8 type, u16 max_size,
-	      void (*callback)(u8 ep));
+	      void (*callback)(u8 ep), uint32_t flags);
 
 extern u16 usbd_ep_write_packet(u8 addr, const void *buf, u16 len);
 

@@ -34,7 +34,7 @@ static u8 force_nak[4];
 static void stm32f107_usbd_init(void);
 static void stm32f107_set_address(u8 addr);
 static void stm32f107_ep_setup(u8 addr, u8 type, u16 max_size,
-			       void (*callback)(u8 ep));
+			       void (*callback)(u8 ep), u32 flags);
 static void stm32f107_endpoints_reset(void);
 static void stm32f107_ep_stall_set(u8 addr, u8 stall);
 static u8 stm32f107_ep_stall_get(u8 addr);
@@ -109,8 +109,9 @@ static void stm32f107_set_address(u8 addr)
 }
 
 static void stm32f107_ep_setup(u8 addr, u8 type, u16 max_size,
-			       void (*callback) (u8 ep))
+			       void (*callback) (u8 ep), u32 flags)
 {
+	(void)flags;
 	/*
 	 * Configure endpoint address and type. Allocate FIFO memory for
 	 * endpoint. Install callback funciton.

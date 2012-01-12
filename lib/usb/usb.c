@@ -95,7 +95,7 @@ void _usbd_reset(void)
 {
 	_usbd_device.current_address = 0;
 	_usbd_device.current_config = 0;
-	usbd_ep_setup(0, USB_ENDPOINT_ATTR_CONTROL, 64, NULL);
+	usbd_ep_setup(0, USB_ENDPOINT_ATTR_CONTROL, 64, NULL, 0);
 	_usbd_hw_set_address(0);
 
 	if (_usbd_device.user_callback_reset)
@@ -115,9 +115,10 @@ void usbd_disconnect(bool disconnected)
 		_usbd_device.driver->disconnect(disconnected);
 }
 
-void usbd_ep_setup(u8 addr, u8 type, u16 max_size, void (*callback)(u8 ep))
+void usbd_ep_setup(u8 addr, u8 type, u16 max_size, void (*callback)(u8 ep),
+		u32 flags)
 {
-	_usbd_device.driver->ep_setup(addr, type, max_size, callback);
+	_usbd_device.driver->ep_setup(addr, type, max_size, callback, flags);
 }
 
 u16 usbd_ep_write_packet(u8 addr, const void *buf, u16 len)

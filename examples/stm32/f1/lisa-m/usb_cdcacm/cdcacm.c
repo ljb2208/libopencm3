@@ -220,9 +220,9 @@ static void cdcacm_set_config(u16 wValue)
 {
 	(void)wValue;
 
-	usbd_ep_setup(0x01, USB_ENDPOINT_ATTR_BULK, 64, cdcacm_data_rx_cb);
-	usbd_ep_setup(0x82, USB_ENDPOINT_ATTR_BULK, 64, NULL);
-	usbd_ep_setup(0x83, USB_ENDPOINT_ATTR_INTERRUPT, 16, NULL);
+	usbd_ep_setup(0x01, USB_ENDPOINT_ATTR_BULK, 64, cdcacm_data_rx_cb, 0);
+	usbd_ep_setup(0x82, USB_ENDPOINT_ATTR_BULK, 64, NULL, 0);
+	usbd_ep_setup(0x83, USB_ENDPOINT_ATTR_INTERRUPT, 16, NULL, 0);
 
 	usbd_register_control_callback(
 				USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE,

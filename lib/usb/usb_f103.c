@@ -76,25 +76,27 @@ static void stm32f103_set_address(u8 addr)
  * @param ep Index of endpoint to configure.
  * @param size Size in bytes of the RX buffer.
  */
-static void usb_set_ep_rx_bufsize(u8 ep, u32 size)
+static void usb_set_ep_rx_bufsize(u8 ep, u32 size, int dblbuf)
 {
 	if (size > 62) {
 		if (!(size & 0x1f))
 			size -= 32;
 		size &= ~0x1f;
 		USB_SET_EP_RX_COUNT(ep, (size << 5) | 0x8000);
+		if(dblbuf)
+			USB_SET_EP_TX_COUNT(ep, (size << 5) | 0x8000);
 	} else {
 		if (size & 1)
 			size++;
 		USB_SET_EP_RX_COUNT(ep, size << 10);
+		if(dblbuf)
+			USB_SET_EP_TX_COUNT(ep, (size << 5) | 0x8000);
 	}
 }
 
 static void stm32f103_ep_setup(u8 addr, u8 type, u16 max_size,
 			       void (*callback) (u8 ep), u32 flags)
 {
-	(void)flags;
-
 	/* Translate USB standard type codes to STM32. */
 	const u16 typelookup[] = {
 		[USB_ENDPOINT_ATTR_CONTROL] = USB_EP_TYPE_CONTROL,
@@ -119,11 +121,20 @@ static void stm32f103_ep_setup(u8 addr, u8 type, u16 max_size,
 		USB_CLR_EP_TX_DTOG(addr);
 		USB_SET_EP_TX_STAT(addr, USB_EP_TX_STAT_NAK);
 		_usbd_device.pm_top += max_size;
+		if(flags & EP_FLAG_DOUBLE_BUFFERED) {
+			/* Setup receive side for DATA1 TX */
+			USB_SET_EP_RX_ADDR(addr, _usbd_device.pm_top);
+			USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_NAK);
+			USB_CLR_EP_RX_DTOG(addr);
+			USB_SET_EP_KIND(addr);
+			_usbd_device.pm_top += max_size;
+		}
 	}
 
 	if (!dir) {
 		USB_SET_EP_RX_ADDR(addr, _usbd_device.pm_top);
-		usb_set_ep_rx_bufsize(addr, max_size);
+		usb_set_ep_rx_bufsize(addr, max_size, 
+					flags & EP_FLAG_DOUBLE_BUFFERED);
 		if (callback) {
 			_usbd_device.
 			    user_callback_ctr[addr][USB_TRANSACTION_OUT] =
@@ -132,6 +143,14 @@ static void stm32f103_ep_setup(u8 addr, u8 type, u16 max_size,
 		USB_CLR_EP_RX_DTOG(addr);
 		USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_VALID);
 		_usbd_device.pm_top += max_size;
+		if(flags & EP_FLAG_DOUBLE_BUFFERED) {
+			/* Setup transmit side for DATA1 RX */
+			USB_SET_EP_TX_ADDR(addr, _usbd_device.pm_top);
+			USB_SET_EP_TX_STAT(addr, USB_EP_TX_STAT_NAK);
+			USB_CLR_EP_TX_DTOG(addr);
+			USB_SET_EP_KIND(addr);
+			_usbd_device.pm_top += max_size;
+		}
 	}
 }
 
@@ -219,12 +238,37 @@ static void usb_copy_to_pm(volatile void *vPM, const void *buf, u16 len)
 static u16 stm32f103_ep_write_packet(u8 addr, const void *buf, u16 len)
 {
 	addr &= 0x7F;
+	u16 epr = *USB_EP_REG(addr);
 
-	if ((*USB_EP_REG(addr) & USB_EP_TX_STAT) == USB_EP_TX_STAT_VALID)
+	/* If single-buffered and valid, then buffer is full, so ditch */
+	if ((epr & (USB_EP_TX_STAT | USB_EP_KIND)) == USB_EP_TX_STAT_VALID)
 		return 0;
+	/* If double-buffered and valid, then buffer is only full if 
+	 * DTOG == SW_BUF
+	 */
+	if ((epr & (USB_EP_TX_STAT | USB_EP_KIND)) == 
+				(USB_EP_TX_STAT_VALID | USB_EP_KIND)) {
+		if ((epr & (USB_EP_RX_DTOG | USB_EP_TX_DTOG)) == 
+				(USB_EP_RX_DTOG | USB_EP_TX_DTOG))
+			return 0; /* SW_BUF == DTOG == 1 */
+		if ((epr & (USB_EP_RX_DTOG | USB_EP_TX_DTOG)) == 0)
+			return 0; /* SW_BUF == DTOG == 0 */
+	}
 
-	usb_copy_to_pm(USB_GET_EP_TX_BUFF(addr), buf, len);
-	USB_SET_EP_TX_COUNT(addr, len);
+	if ((epr & (USB_EP_KIND | USB_EP_RX_DTOG)) ==
+				(USB_EP_KIND | USB_EP_RX_DTOG)) {
+		usb_copy_to_pm(USB_GET_EP_RX_BUFF(addr), buf, len);
+		USB_SET_EP_RX_COUNT(addr, len);
+	} else {
+		usb_copy_to_pm(USB_GET_EP_TX_BUFF(addr), buf, len);
+		USB_SET_EP_TX_COUNT(addr, len);
+	}
+
+	if (epr & USB_EP_KIND) {
+		SET_REG(USB_EP_REG(addr), 
+			(GET_REG(USB_EP_REG(addr) & USB_EP_NTOGGLE_MSK) |
+			USB_EP_RX_DTOG));
+	}
 	USB_SET_EP_TX_STAT(addr, USB_EP_TX_STAT_VALID);
 
 	return len;
@@ -252,11 +296,22 @@ static void usb_copy_from_pm(void *buf, const volatile void *vPM, u16 len)
 
 static u16 stm32f103_ep_read_packet(u8 addr, void *buf, u16 len)
 {
-	if ((*USB_EP_REG(addr) & USB_EP_RX_STAT) == USB_EP_RX_STAT_VALID)
+	if ((*USB_EP_REG(addr) & (USB_EP_KIND | USB_EP_RX_STAT)) == USB_EP_RX_STAT_VALID)
 		return 0;
 
-	len = MIN(USB_GET_EP_RX_COUNT(addr) & 0x3ff, len);
-	usb_copy_from_pm(buf, USB_GET_EP_RX_BUFF(addr), len);
+	if ((*USB_EP_REG(addr) & (USB_EP_KIND | USB_EP_TX_DTOG)) ==
+				(USB_EP_KIND)) {
+		len = MIN(USB_GET_EP_TX_COUNT(addr) & 0x3ff, len);
+		usb_copy_from_pm(buf, USB_GET_EP_TX_BUFF(addr), len);
+	} else {
+		len = MIN(USB_GET_EP_RX_COUNT(addr) & 0x3ff, len);
+		usb_copy_from_pm(buf, USB_GET_EP_RX_BUFF(addr), len);
+	}
+	if (*USB_EP_REG(addr) & USB_EP_KIND) {
+		SET_REG(USB_EP_REG(addr), 
+			(GET_REG(USB_EP_REG(addr) & USB_EP_NTOGGLE_MSK) |
+			USB_EP_TX_DTOG));
+	}
 	USB_CLR_EP_RX_CTR(addr);
 
 	if (!force_nak[addr])
@@ -280,10 +335,24 @@ static void stm32f103_poll(void)
 		u8 ep = istr & USB_ISTR_EP_ID;
 		u8 type = (istr & USB_ISTR_DIR) ? 1 : 0;
 
-		if (type) /* OUT or SETUP transaction */
+		if (type) { /* OUT or SETUP transaction */
 			type += (*USB_EP_REG(ep) & USB_EP_SETUP) ? 1 : 0;
-		else /* IN transaction */
+		} else { /* IN transaction */
+			u16 epr = *USB_EP_REG(ep);
+			if (epr & USB_EP_KIND) {
+				/* Double-buffered, manually set NAK.
+				 * Hardware doen't require this, but it's 
+				 * needed for usbd_ep_write_packet to know the
+				 * buffer's available.
+				 */
+				if ((epr & (USB_EP_RX_DTOG | USB_EP_TX_DTOG)) == 
+						(USB_EP_RX_DTOG | USB_EP_TX_DTOG))
+					USB_SET_EP_TX_STAT(ep, USB_EP_TX_STAT_NAK);
+				if ((epr & (USB_EP_RX_DTOG | USB_EP_TX_DTOG)) == 0)
+					USB_SET_EP_TX_STAT(ep, USB_EP_TX_STAT_NAK);
+			}
 			USB_CLR_EP_TX_CTR(ep);
+		}
 
 		if (_usbd_device.user_callback_ctr[ep][type])
 			_usbd_device.user_callback_ctr[ep][type] (ep);

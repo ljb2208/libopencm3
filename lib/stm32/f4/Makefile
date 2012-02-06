@@ -24,7 +24,8 @@ PREFIX	?= arm-none-eabi
 CC		= $(PREFIX)-gcc
 AR		= $(PREFIX)-ar
 CFLAGS		= -Os -g -Wall -Wextra -I../../../include -fno-common \
-		  -mcpu=cortex-m3 -mthumb -Wstrict-prototypes \
+		  -mcpu=cortex-m4 -mthumb -Wstrict-prototypes \
+		  -mfloat-abi=hard  -mfpu=fpv4-sp-d16 \
 		  -ffunction-sections -fdata-sections -MD -DSTM32F4
 # ARFLAGS	= rcsv
 ARFLAGS		= rcs

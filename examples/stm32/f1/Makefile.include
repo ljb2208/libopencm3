@@ -4,18 +4,18 @@
 ## Copyright (C) 2009 Uwe Hermann <uwe@hermann-uwe.de>
 ## Copyright (C) 2010 Piotr Esden-Tempski <piotr@esden.net>
 ##
-## This program is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
+## This library is free software: you can redistribute it and/or modify
+## it under the terms of the GNU Lesser General Public License as published by
 ## the Free Software Foundation, either version 3 of the License, or
 ## (at your option) any later version.
 ##
-## This program is distributed in the hope that it will be useful,
+## This library is distributed in the hope that it will be useful,
 ## but WITHOUT ANY WARRANTY; without even the implied warranty of
 ## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU General Public License for more details.
+## GNU Lesser General Public License for more details.
 ##
-## You should have received a copy of the GNU General Public License
-## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+## You should have received a copy of the GNU Lesser General Public License
+## along with this library.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
 PREFIX	?= arm-none-eabi
@@ -31,7 +31,8 @@ TOOLCHAIN_DIR   = ../../../../..
 CFLAGS		+= -Os -g -Wall -Wextra -I$(TOOLCHAIN_DIR)/include \
 		   -fno-common -mcpu=cortex-m3 -mthumb -msoft-float -MD -DSTM32F1
 LDSCRIPT	?= $(BINARY).ld
-LDFLAGS		+= -lc -lnosys -L$(TOOLCHAIN_DIR)/lib -L$(TOOLCHAIN_DIR)/lib/stm32/f1 \
+LDFLAGS		+= -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group \
+		   -L$(TOOLCHAIN_DIR)/lib -L$(TOOLCHAIN_DIR)/lib/stm32/f1 \
 		   -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections \
 		   -mthumb -march=armv7 -mfix-cortex-m3-ldrd -msoft-float
 OBJS		+= $(BINARY).o

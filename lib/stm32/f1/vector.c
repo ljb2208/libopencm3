@@ -3,24 +3,24 @@
  *
  * Copyright (C) 2010 Piotr Esden-Tempski <piotr@esden.net>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #define WEAK __attribute__ ((weak))
 
 /* Symbols exported by the linker script(s). */
-extern unsigned _etext, _data, _edata, _ebss, _stack;
+extern unsigned __exidx_end, _data, _edata, _ebss, _stack;
 
 void main(void);
 void reset_handler(void);
@@ -197,7 +197,7 @@ void reset_handler(void)
 
 	__asm__("MSR msp, %0" : : "r"(&_stack));
 
-	for (src = &_etext, dest = &_data; dest < &_edata; src++, dest++)
+	for (src = &__exidx_end, dest = &_data; dest < &_edata; src++, dest++)
 		*dest = *src;
 
 	while (dest < &_ebss)

@@ -3,18 +3,18 @@
  *
  * Copyright (C) 2009 Edward Cheeseman <evbuilder@users.sourceforge.net>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /*
@@ -193,13 +193,13 @@ void adc_start_conversion_injected(u32 adc)
 	while (ADC_CR2(adc) & ADC_CR2_JSWSTART);
 }
 
-void adc_enable_external_trigger_regular(u32 adc, u8 trigger)
+void adc_enable_external_trigger_regular(u32 adc, u32 trigger)
 {
 	u32 reg32;
 
-	reg32 = (ADC_CR2(adc) & 0xfff1ffff); /* Clear bits [19:17]. */
+	reg32 = (ADC_CR2(adc) & ~(ADC_CR2_EXTSEL_MASK));
 	if (trigger < 8)
-		reg32 |= (trigger << ADC_CR2_EXTSEL_LSB);
+		reg32 |= (trigger);
 	ADC_CR2(adc) = reg32;
 	ADC_CR2(adc) |= ADC_CR2_EXTTRIG;
 }
@@ -209,13 +209,13 @@ void adc_disable_external_trigger_regular(u32 adc)
 	ADC_CR2(adc) &= ~ADC_CR2_EXTTRIG;
 }
 
-void adc_enable_external_trigger_injected(u32 adc, u8 trigger)
+void adc_enable_external_trigger_injected(u32 adc, u32 trigger)
 {
 	u32 reg32;
 
-	reg32 = (ADC_CR2(adc) & 0xffff8fff); /* Clear bits [12:14]. */
+	reg32 = (ADC_CR2(adc) & ~(ADC_CR2_JEXTSEL_MASK)); /* Clear bits [12:14]. */
 	if (trigger < 8)
-		reg32 |= (trigger << ADC_CR2_JEXTSEL_LSB);
+		reg32 |= (trigger);
 	ADC_CR2(adc) = reg32;
 	ADC_CR2(adc) |= ADC_CR2_JEXTTRIG;
 }

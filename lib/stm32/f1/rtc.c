@@ -4,18 +4,18 @@
  * Copyright (C) 2010 Uwe Hermann <uwe@hermann-uwe.de>
  * Copyright (C) 2010 Lord James <lordjames@y7mail.com>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <libopencm3/stm32/f1/rcc.h>
@@ -99,14 +99,13 @@ void rtc_enter_config_mode(void)
 
 void rtc_exit_config_mode(void)
 {
-	/* u32 reg32; */
+	u32 reg32;
 
 	/* Exit configuration mode. */
 	RTC_CRL &= ~RTC_CRL_CNF;
 
 	/* Wait until the RTOFF bit is 1 (our RTC register write finished). */
-	/* while ((reg32 = (RTC_CRL & RTC_CRL_RTOFF)) == 0); */
-	/* TODO: Unnecessary since we poll the bit on config entry(?) */
+	while ((reg32 = (RTC_CRL & RTC_CRL_RTOFF)) == 0);
 }
 
 void rtc_set_alarm_time(u32 alarm_time)

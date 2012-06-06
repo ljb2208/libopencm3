@@ -3,18 +3,18 @@
  *
  * Copyright (C) 2009 Uwe Hermann <uwe@hermann-uwe.de>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /* Generic linker script for STM32 targets using libopencm3. */
@@ -23,6 +23,9 @@
 
 /* Enforce emmition of the vector table. */
 EXTERN (vector_table)
+
+/* Define the entry point of the output file. */
+ENTRY(reset_handler)
 
 /* Define sections. */
 SECTIONS
@@ -38,9 +41,22 @@ SECTIONS
 		_etext = .;
 	} >rom
 
+	/*
+	* Another section used by C++ stuff, appears when using newlib with
+	* 64bit (long long) printf support
+	*/
+	.ARM.extab : {
+		*(.ARM.extab*)
+	} >rom
+	.ARM.exidx : {
+		__exidx_start = .;
+		*(.ARM.exidx*)
+		__exidx_end = .;
+	} >rom
+
 	. = ORIGIN(ram);
 
-	.data : AT(_etext) {
+	.data : AT (__exidx_end) {
 		_data = .;
 		*(.data*)	/* Read-write initialized data */
 		. = ALIGN(4);
@@ -60,15 +76,9 @@ SECTIONS
 	 */
 	/DISCARD/ : { *(.eh_frame) }
 
-	/*
-	 * Another section used by C++ stuff, appears when using newlib with
-	 * 64bit (long long) printf support - discard it for now.
-	 */
-	/DISCARD/ : { *(.ARM.exidx) }
-
 	. = ALIGN(4);
 	end = .;
 }
 
-PROVIDE(_stack = 0x20000800);
+PROVIDE(_stack = ORIGIN(ram) + LENGTH(ram));
 

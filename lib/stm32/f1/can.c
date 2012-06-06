@@ -3,18 +3,18 @@
  *
  * Copyright (C) 2010 Piotr Esden-Tempski <piotr@esden.net>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <libopencm3/stm32/can.h>
@@ -228,7 +228,7 @@ int can_transmit(u32 canport, u32 id, bool ext, bool rtr, u8 length, u8 *data)
 		CAN_TIxR(canport, mailbox) |= CAN_TIxR_RTR; /* Set */
 
 	/* Set the DLC. */
-	CAN_TDTxR(canport, mailbox) &= 0xFFFFFFFF0;
+	CAN_TDTxR(canport, mailbox) &= 0xFFFFFFF0;
 	CAN_TDTxR(canport, mailbox) |= length & CAN_TDTxR_DLC_MASK;
 
 	/* Set the data. */

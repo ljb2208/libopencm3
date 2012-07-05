@@ -1,8 +1,34 @@
+/** @file
+
+@ingroup STM32F1xx
+
+@brief <b>libopencm3 STM32F1xx Reset and Clock Control</b>
+
+@version 1.0.0
+
+@author @htmlonly &copy; @endhtmlonly 2009 Federico Ruiz-Ugalde \<memeruiz at gmail dot com\>
+@author @htmlonly &copy; @endhtmlonly 2009 Uwe Hermann <uwe@hermann-uwe.de>
+@author @htmlonly &copy; @endhtmlonly 2010 Thomas Otto <tommi@viadmin.org>
+
+@date 18 May 2012
+
+This library supports the Reset and Clock
+Control System in the STM32F1xx series of ARM Cortex Microcontrollers
+by ST Microelectronics.
+
+Clock settings and resets for many peripherals are given here rather than in the
+peripheral library.
+
+The library also provides a number of common configurations for the processor
+system clock. Not all possible configurations are given here.
+
+@bugs None known
+
+LGPL License Terms @ref lgpl_license
+ */
 /*
  * This file is part of the libopencm3 project.
  *
- * Copyright (C) 2009 Federico Ruiz-Ugalde <memeruiz at gmail dot com>
- * Copyright (C) 2009 Uwe Hermann <uwe@hermann-uwe.de>
  * Copyright (C) 2010 Thomas Otto <tommi@viadmin.org>
  *
  * This library is free software: you can redistribute it and/or modify
@@ -19,12 +45,22 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/flash.h>
 
-/* Set the default ppre1 and ppre2 peripheral clock frequencies after reset. */
+/** Default ppre1 peripheral clock frequency after reset. */
 u32 rcc_ppre1_frequency = 8000000;
+/** Default ppre2 peripheral clock frequency after reset. */
 u32 rcc_ppre2_frequency = 8000000;
+
+//-----------------------------------------------------------------------------
+/** @brief RCC Clear the Oscillator Ready Interrupt
+
+Clear the interrupt flag that was set when a clock oscillator became ready to use.
+
+@param[in] enum ::osc_t. Oscillator ID
+*/
 
 void rcc_osc_ready_int_clear(osc_t osc)
 {
@@ -229,6 +265,20 @@ void rcc_osc_bypass_disable(osc_t osc)
 		break;
 	}
 }
+
+//-----------------------------------------------------------------------------
+/** @brief RCC Enable a peripheral clock.
+
+Enable the clock on a particular peripheral. Several peripherals could be
+enabled simultaneously if they are controlled by the same register.
+
+@param[in] Unsigned int32 *reg. Pointer to a Clock Enable Register
+			 (either RCC_AHBENR, RCC_APB1RENR or RCC_APB2RENR)
+@param[in] Unsigned int32 en. OR of all enables to be set
+@li If register is RCC_AHBER, from @ref rcc_ahbenr_en
+@li If register is RCC_APB1RENR, from @ref rcc_apb1enr_en
+@li If register is RCC_APB2RENR, from @ref rcc_apb2enr_en
+*/
 
 void rcc_peripheral_enable_clock(volatile u32 *reg, u32 en)
 {
@@ -435,6 +485,53 @@ void rcc_clock_setup_in_hsi_out_48mhz(void)
 	rcc_ppre1_frequency = 24000000;
 	rcc_ppre2_frequency = 48000000;
 }
+
+void rcc_clock_setup_in_hsi_out_24mhz(void) {
+	/* Enable internal high-speed oscillator. */
+	rcc_osc_on(HSI);
+	rcc_wait_for_osc_ready(HSI);
+
+	/* Select HSI as SYSCLK source. */
+	rcc_set_sysclk_source(RCC_CFGR_SW_SYSCLKSEL_HSICLK);
+
+	/*
+	 * Set prescalers for AHB, ADC, ABP1, ABP2.
+	 * Do this before touching the PLL (TODO: why?).
+	 */
+	rcc_set_hpre(RCC_CFGR_HPRE_SYSCLK_NODIV); /* Set. 24MHz Max. 24MHz */
+	rcc_set_adcpre(RCC_CFGR_ADCPRE_PCLK2_DIV2); /* Set. 12MHz Max. 12MHz */
+	rcc_set_ppre1(RCC_CFGR_PPRE1_HCLK_NODIV); /* Set. 24MHz Max. 24MHz */
+	rcc_set_ppre2(RCC_CFGR_PPRE2_HCLK_NODIV); /* Set. 24MHz Max. 24MHz */
+
+	/*
+	 * Sysclk is (will be) running with 24MHz -> 2 waitstates.
+	 * 0WS from 0-24MHz
+	 * 1WS from 24-48MHz
+	 * 2WS from 48-72MHz
+	 */
+	flash_set_ws(FLASH_LATENCY_0WS);
+
+	/*
+	 * Set the PLL multiplication factor to 6.
+	 * 8MHz (internal) * 6 (multiplier) / 2 (PLLSRC_HSI_CLK_DIV2) = 24MHz
+	 */
+	rcc_set_pll_multiplication_factor(RCC_CFGR_PLLMUL_PLL_CLK_MUL6);
+
+	/* Select HSI/2 as PLL source. */
+	rcc_set_pll_source(RCC_CFGR_PLLSRC_HSI_CLK_DIV2);
+
+	/* Enable PLL oscillator and wait for it to stabilize. */
+	rcc_osc_on(PLL);
+	rcc_wait_for_osc_ready(PLL);
+
+	/* Select PLL as SYSCLK source. */
+	rcc_set_sysclk_source(RCC_CFGR_SW_SYSCLKSEL_PLLCLK);
+
+	/* Set the peripheral clock frequencies used */
+	rcc_ppre1_frequency = 24000000;
+	rcc_ppre2_frequency = 24000000;
+}
+
 
 void rcc_clock_setup_in_hse_8mhz_out_24mhz(void)
 {
